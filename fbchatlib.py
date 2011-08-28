@@ -14,11 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-<<<<<<< HEAD
-import sys, os, threading, re, gobject, time
-=======
-import sys, os, threading, re, gobject, urllib
->>>>>>> d3d7100f993443043c9936875768b8be0ba2341b
+import sys, os, threading, re, gobject, time, urllib
 from datetime import datetime
 
 def get_facebook_client():
@@ -113,11 +109,7 @@ class FacebookChatClient(Client):
         querymatch = re.compile(".query(.+)roster..<item jid=\"-")
         roster = querymatch.sub("", roster)
         roster = roster.replace("</item></query>","")
-<<<<<<< HEAD
         roster = roster.replace("</query>","")
-=======
-        roster = roster.replace("</query>", "")
->>>>>>> d3d7100f993443043c9936875768b8be0ba2341b
         roster = roster.replace("<item jid=\"-",",")
         roster = roster.replace("</item>", "")
         roster = roster.replace("@chat.facebook.com\" name=\"",":")
