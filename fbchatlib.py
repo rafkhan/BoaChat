@@ -1,6 +1,24 @@
 #!/usr/bin/python
+# Copyright 2011 Uiri Noyb and Rafael Khan
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+<<<<<<< HEAD
 import sys, os, threading, re, gobject, time
+=======
+import sys, os, threading, re, gobject, urllib
+>>>>>>> d3d7100f993443043c9936875768b8be0ba2341b
 from datetime import datetime
 
 def get_facebook_client():
@@ -18,7 +36,7 @@ def get_facebook_client():
         client.uid, client.session_key, client.secret = [ line.strip() for line in handle ]
         handle.close()
     except IOError:
-        print client.auth.createToken()
+        client.auth.createToken()
         client.login()
         print 'Log in to the app in your browser, then press enter.'
         while(1):
@@ -76,10 +94,13 @@ from pyxmpp.all import JID, Presence, Message, Iq
 from pyxmpp.client import Client
 
 class FacebookChatClient(Client):
-    def __init__(self, chatbuff=None, **kwargs):
+    def __init__(self, chatbuff=None, myuid=None, **kwargs):
         Client.__init__(self, **kwargs)
         if chatbuff != None:
             self.buffr = chatbuff
+        self.roster_array = []
+        self.myuid = myuid
+        self.nametouid = None
 
     def session_started(self):
         self.get_stream().set_message_handler('chat', self.got_message)
@@ -92,7 +113,11 @@ class FacebookChatClient(Client):
         querymatch = re.compile(".query(.+)roster..<item jid=\"-")
         roster = querymatch.sub("", roster)
         roster = roster.replace("</item></query>","")
+<<<<<<< HEAD
         roster = roster.replace("</query>","")
+=======
+        roster = roster.replace("</query>", "")
+>>>>>>> d3d7100f993443043c9936875768b8be0ba2341b
         roster = roster.replace("<item jid=\"-",",")
         roster = roster.replace("</item>", "")
         roster = roster.replace("@chat.facebook.com\" name=\"",":")
@@ -101,15 +126,20 @@ class FacebookChatClient(Client):
         roster = roster.replace("</group>", "")
         roster = roster.replace("<group>", ":")
         tmp_roster_array = roster.split(",")
-        roster_array = []
         for i in tmp_roster_array:
             i = i.split(":")
-            roster_array.append(i)
-        return roster_array
-    
+            self.roster_array.append(i)
+        dictarray = []
+        for i in self.roster_array:
+            if len(i) > 2:
+                dictarray.append([i[0], i[1]])
+            else:
+                dictarray.append(i)
+        self.nametouid = dict(dictarray)
+        return self.roster_array
+
     def idle(self):
         Client.idle(self)
-        #send signal to list view to update roster
 
     #HANDLER FOR A RECEIVED MESSAGE
     def got_message(self, stanza):
@@ -119,24 +149,33 @@ class FacebookChatClient(Client):
             buffr = None
         stanza_body = stanza.get_body()
         stanza_node = str(stanza.get_from().node).replace("-","")
+        if stanza_node == self.myuid:
+            idre = re.compile(".,(.+)$")
+            name = idre.sub("", urllib.urlopen("http://graph.facebook.com/" + stanza_node + "?fields=name").read().replace("""{"name":\"""", ""))
+        else:
+            try:
+                name = self.nametouid[stanza_node]
+            except:
+                name = stanza_node
         if(stanza_body == None):
             #gui to show this as tooltip? show/hide dynamic element below buffer?
             if buffr == None:
-                print stanza_node + " is typing...\n"
+                print name + " is typing...\n"
         else:
-            msgtxt = "[" + datetime.now().strftime("%H:%M:%S") + "] <" + stanza_node + "> " + stanza_body + "\n"
+            msgtxt = "[" + datetime.now().strftime("%H:%M:%S") + "] <" + name + "> " + stanza_body + "\n"
             if buffr != None:
                 addtext = buffr + msgtxt
                 gobject.idle_add(self.buffr.set_text, addtext)
             else:
                 print msgtxt
-            logtext = "[" + datetime.now().strftime("%b %d %Y %H:%M:%S") + "] <" + stanza_node + "> " + stanza_body +"\n"
+            logtext = "[" + datetime.now().strftime("%b %d %Y %H:%M:%S") + "] <" + name + "> " + stanza_body +"\n"
             self.write_log(stanza_node, logtext)
 		#stanza.get_from().node is their UID
 
     def send_message(self,uid,msg):
         target = JID('-' +  uid, self.jid.domain)
         self.get_stream().send(Message(to_jid=target, body=unicode(msg)))
+        self.got_message(Message(to_jid=target, body=unicode(msg), from_jid=self.jid))
 
     def write_log(self,uid,logtext):
 #
@@ -164,7 +203,7 @@ class FacebookChatClient(Client):
         finally:
             self.disconnect()
 
-def setup_chat(fb_client, buffr=None, uidarg=None, messarg=None):
+def setup_chat(fb_client, buffr=None):
     global global_fb_client
     global_fb_client = fb_client
     import pyxmpp.sasl
@@ -176,6 +215,7 @@ def setup_chat(fb_client, buffr=None, uidarg=None, messarg=None):
     print 'Creating stream...'
     xmpp_client = FacebookChatClient(
             chatbuff = buffr,
+            myuid = my_uid,
             jid = JID(my_jid),
             password = u'ignored',
             auth_methods = ['sasl:X-FACEBOOK-PLATFORM'],
